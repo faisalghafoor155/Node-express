@@ -88,3 +88,28 @@ This project is a Node.js RESTful API for a tours application called **Natours**
 ## Author
 
 - Project by Faisal Ghafoor (or your name)
+
+## Recent work / Updates (2025-09-11)
+
+- Updated models/tourModel.js:
+  - Removed duplicate `secretTour` field.
+  - Fixed `createdAt` default to use `Date.now` (function) so timestamp is set at creation.
+  - Added `slug` field and pre-save middleware to generate URL-friendly slugs.
+  - Improved `name` validation to allow spaces and common punctuation.
+  - Added an index on `name` for uniqueness at the database level.
+  - Added aggregate middleware guard (skips injecting match when pipeline starts with $geoNear).
+  - Noted that `priceDiscount` validator only runs on document creation (save/create), not on update queries.
+
+- Logging cleanup: reduced noisy logs while keeping query timing output.
+
+- Action items:
+  - Ensure `slugify` and `validator` are installed: `npm install slugify validator`
+  - If you need price-discount validation on updates, consider adding pre `findOneAndUpdate` middleware or validate in controller logic.
+
+---
+
+If you want, I can:
+
+- commit this change to the file, or
+- create a short changelog file instead.
+  Which do you
