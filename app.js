@@ -1,5 +1,8 @@
 const express = require('express')
+const cookieParser = require('cookie-parser')
 const app = express()
+const errorController = require('./controller/errorController')
+const AppError = require('./utils/appError')
 const tourRouter = require('./routes/tourRoute')
 const userRouter = require('./routes/userRoute')
 const morgan = require('morgan')
@@ -8,6 +11,7 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'))
 }
 app.use(express.json())
+app.use(cookieParser())
 app.use(express.static(`${__dirname}/public`))
 // 1) Middleware
 app.use((req, res, next) => {
@@ -31,5 +35,11 @@ app.use((req, res, next) => {
 app.use('/api/v1/tours', tourRouter)
 app.use('/api/v1/users', userRouter)
 // 4) Start Server
+
+app.use((req, res, next) => {
+  next(new AppError(`Can't access this  ${req.originalUrl}`, 404))
+})
+
+app.use(errorController)
 
 module.exports = app

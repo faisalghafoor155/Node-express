@@ -10,7 +10,13 @@ const tourSchema = new mongoose.Schema(
       trim: true,
       maxlength: [40, 'A tour name must less or equal then 40 characters'],
       minlength: [10, 'A tour name must more or equal then 10 characters'],
-      validate: [validator.isAlpha, 'Tour name must only contain characters']
+      validate: {
+        validator: function (val) {
+          // allow spaces along with alphabets in the tour name
+          return /^[A-Za-z ]+$/.test(val)
+        },
+        message: 'Tour name must only contain letters and spaces'
+      }
     },
     // store URL-friendly slug (created from `name` in pre-save middleware)
     slug: String,
@@ -34,11 +40,13 @@ const tourSchema = new mongoose.Schema(
       type: Number,
       default: 4.5,
       min: [1, 'Rating must be above 1.0'],
-      max: [5, 'Rating must be below 5.0']
+      max: [5, 'Rating must be below 5.0'],
+      alias: 'ratingAverage'
     },
     ratingsQuantity: {
       type: Number,
-      default: 0
+      default: 0,
+      alias: 'ratingQuanity'
     },
     price: {
       type: Number,
@@ -48,7 +56,19 @@ const tourSchema = new mongoose.Schema(
       type: Number,
       validate: {
         validator: function (val) {
-          return val < this.price
+          if (this instanceof mongoose.Model) {
+            return val < this.price
+          }
+          // For update validators: use the document being updated when available
+          if (this && this.getUpdate) {
+            const update = this.getUpdate()
+            const price = update.price || (update.$set && update.$set.price)
+            if (typeof price === 'number') {
+              return val < price
+            }
+          }
+          // If price not provided in update, fall back to allowing current value
+          return true
         },
         message: 'Discount Price ({VALUE}) should be below regular price'
       }
@@ -77,17 +97,25 @@ const tourSchema = new mongoose.Schema(
       default: Date.now(),
       select: false
     },
-    startDates: [Date],
-    secretTour: {
-      type: Boolean,
-      default: false
-    }
+    startDates: [Date]
   },
   {
     toJSON: {
-      virtuals: true
+      virtuals: true,
+      transform: function (doc, ret) {
+        delete ret.ratingAverage
+        delete ret.ratingQuanity
+        return ret
+      }
     },
-    toObject: { virtuals: true }
+    toObject: {
+      virtuals: true,
+      transform: function (doc, ret) {
+        delete ret.ratingAverage
+        delete ret.ratingQuanity
+        return ret
+      }
+    }
   }
 )
 tourSchema.virtual('durationWeek').get(function () {
@@ -102,7 +130,7 @@ tourSchema.virtual('durationWeek').get(function () {
 tourSchema.pre('save', function (next) {
   this.slug = slugify(this.name, { lower: true })
 
-  console.log('Will save document; slug set to:', this.slug)
+  // console.log('Will save document; slug set to:', this.slug)
   next()
 })
 // tourSchema.post('save', function (doc, next) {
@@ -116,12 +144,12 @@ tourSchema.pre(/^find/, function (next) {
   next()
 })
 tourSchema.post(/^find/, function (docs, next) {
-  console.log(`Query Took ${Date.now() - this.start} millisecond`)
-  console.log(docs)
+  // console.log(`Query Took ${Date.now() - this.start} millisecond`)
+  // console.log(docs)
   next()
 })
 tourSchema.pre('aggregate', function (next) {
-  console.log(this.pipeline())
+  // console.log(this.pipeline())
   this.pipeline().unshift({ $match: { secretTour: { $ne: true } } })
   next()
 })
